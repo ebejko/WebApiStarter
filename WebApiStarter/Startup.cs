@@ -2,21 +2,19 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
-using Newtonsoft.Json;
-using Swashbuckle.AspNetCore.Swagger;
+using Microsoft.OpenApi.Models;
 using System;
 using System.IO;
 using System.Reflection;
 using System.Text;
 using WebApiStarter.Data;
-using WebApiStarter.Extensions;
 using WebApiStarter.Filters;
+using WebApiStarter.Services;
 
 namespace WebApiStarter
 {
@@ -51,54 +49,44 @@ namespace WebApiStarter
                         ValidAudience = Configuration["Token:Issuer"],
                         ValidateIssuerSigningKey = true,
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Token:Key"])),
+                        ClockSkew = TimeSpan.Zero
                     };
                 });
 
-            services.AddMvc()
-                .SetCompatibilityVersion(CompatibilityVersion.Latest)
-                .AddMvcOptions(options =>
-                {
-                    options.OutputFormatters.RemoveType<StringOutputFormatter>();
-                })
-                .AddJsonOptions(options =>
-                {
-                    options.SerializerSettings.Formatting = Formatting.Indented;
-                });
-
-            services.Configure<ApiBehaviorOptions>(options =>
-            {
-                options.InvalidModelStateResponseFactory = context => context.ValidationProblemDetailsResult();
-            });
+            services.AddControllers();
 
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc(Configuration["Api:Version"],
-                    new Info
+                    new OpenApiInfo
                     {
                         Title = Configuration["Api:Name"],
                         Description = Configuration["Api:Description"],
                         Version = Configuration["Api:Version"]
                     });
 
-                c.AddSecurityDefinition("Bearer", new ApiKeyScheme
+                c.AddSecurityDefinition("BearerAuth", new OpenApiSecurityScheme
                 {
-                    Type = "apiKey",
-                    Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+                    Type = SecuritySchemeType.Http,
+                    Scheme = JwtBearerDefaults.AuthenticationScheme.ToLowerInvariant(),
+                    In = ParameterLocation.Header,
                     Name = "Authorization",
-                    In = "header"
+                    BearerFormat = "JWT",
+                    Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
                 });
 
-                c.DocumentFilter<SchemaDocumentFilter>();
                 c.OperationFilter<AuthResponsesOperationFilter>();
 
                 // Set the comments path for the Swagger JSON and UI.
                 var xmlPath = Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml");
                 c.IncludeXmlComments(xmlPath);
             });
+
+            services.AddScoped<ITokenService, TokenService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {
@@ -109,14 +97,18 @@ namespace WebApiStarter
                 app.UseHsts();
             }
 
+            app.UseCors(builder => builder.AllowAnyOrigin().AllowAnyHeader());
+
             app.UseHttpsRedirection();
 
+            app.UseRouting();
+
             app.UseAuthentication();
+            app.UseAuthorization();
 
             app.UseSwagger(c => 
             {
                 c.RouteTemplate = "api-docs/{documentName}/swagger.json";
-                c.PreSerializeFilters.Add((swaggerDoc, httpReq) => swaggerDoc.Host = httpReq.Host.Value);
             });
 
             app.UseSwaggerUI(c =>
@@ -126,7 +118,10 @@ namespace WebApiStarter
                 c.RoutePrefix = String.Empty;
             });
 
-            app.UseMvc();
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+            });
         }
     }
 }

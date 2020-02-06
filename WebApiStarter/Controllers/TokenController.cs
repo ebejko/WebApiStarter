@@ -1,36 +1,21 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
+﻿using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
-using System.Security.Claims;
 using System.Threading.Tasks;
 using WebApiStarter.Attributes;
 using WebApiStarter.Models;
+using WebApiStarter.Services;
 
 namespace WebApiStarter.Controllers
 {
     [ApiController]
     [Route("api/[controller]/[action]")]
-    public class TokenController : Controller
+    public class TokenController : ControllerBase
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly TokenValidationParameters _tokenValidationParameters;
+        private readonly ITokenService _tokenService;
 
-        public TokenController(
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager,
-            IOptionsSnapshot<JwtBearerOptions> jwtBearerOptions)
+        public TokenController(ITokenService tokenService)
         {
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _tokenValidationParameters = jwtBearerOptions.Get(JwtBearerDefaults.AuthenticationScheme).TokenValidationParameters;
+            _tokenService = tokenService ?? throw new ArgumentNullException(nameof(tokenService));
         }
 
         /// <summary>
@@ -40,68 +25,12 @@ namespace WebApiStarter.Controllers
         [ProducesOK(typeof(TokenResponse)), ProducesNoContent, ProducesBadRequest]
         public async Task<IActionResult> Generate([FromBody]TokenRequest model)
         {
-            var user = await _userManager.FindByNameAsync(model.UserName);
+            var token = await _tokenService.GenerateToken(model);
 
-            if (user != null)
-            {
-                var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
-
-                if (result.Succeeded)
-                {
-                    var token = await BuildTokenForUser(user);
-                    return Ok(new TokenResponse { Token = new JwtSecurityTokenHandler().WriteToken(token) });
-                }
-            }
-
-            return NoContent();
+            if (token != null)
+                return Ok(token);
+            else
+                return NoContent();
         }
-
-        /// <summary>
-        /// Refresh token
-        /// </summary>
-        [HttpPost]
-        [Authorize]
-        [ProducesOK(typeof(TokenResponse)), ProducesNoContent]
-        public async Task<IActionResult> Refresh()
-        {
-            var user = await _userManager.FindByNameAsync(User.Identity.Name);
-
-            if (user != null)
-            {
-                var token = await BuildTokenForUser(user);
-                return Ok(new TokenResponse { Token = new JwtSecurityTokenHandler().WriteToken(token) });
-            }
-
-            return NoContent();
-        }
-
-        #region Private Methods
-
-        private async Task<JwtSecurityToken> BuildTokenForUser(IdentityUser user)
-        {
-            var claims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.Name, user.UserName),
-                    new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
-                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-                };
-
-            var userClaims = await _userManager.GetClaimsAsync(user);
-            var userRoles = await _userManager.GetRolesAsync(user);
-
-            claims.AddRange(userClaims);
-            claims.AddRange(userRoles.Select(role => new Claim(ClaimTypes.Role, role)));
-
-            return new JwtSecurityToken(
-                issuer: _tokenValidationParameters.ValidIssuer,
-                audience: _tokenValidationParameters.ValidAudience,
-                claims: claims,
-                expires: DateTime.UtcNow.AddDays(30),
-                signingCredentials: new SigningCredentials(
-                    _tokenValidationParameters.IssuerSigningKey,
-                    SecurityAlgorithms.HmacSha256));
-        }
-
-        #endregion  
     }
 }

@@ -6,7 +6,7 @@ using WebApiStarter.Constants;
 
 namespace WebApiStarter.Data
 {
-    public class DbInitializer
+    public static class DbInitializer
     {
         public async static Task Seed(
             ApplicationDbContext context, 
