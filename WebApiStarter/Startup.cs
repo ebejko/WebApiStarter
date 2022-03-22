@@ -1,17 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System;
-using System.IO;
 using System.Reflection;
 using System.Text;
+using WebApiStarter.Constants;
 using WebApiStarter.Data;
 using WebApiStarter.Filters;
 using WebApiStarter.Services;
@@ -31,7 +26,7 @@ namespace WebApiStarter
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(Configuration.GetConnectionString("SqlServerConnection")));
             
             services.AddIdentityCore<IdentityUser>()
                 .AddRoles<IdentityRole>()
@@ -48,12 +43,19 @@ namespace WebApiStarter
                         ValidateAudience = true,
                         ValidAudience = Configuration["Token:Issuer"],
                         ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Token:Key"])),
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Token:SigningKey"])),
+                        TokenDecryptionKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Token:EncryptionKey"])),
                         ClockSkew = TimeSpan.Zero
                     };
                 });
 
-            services.AddControllers();
+            services.AddRouting(options => options.LowercaseUrls = true);
+
+            services.AddControllers(options => 
+            {
+                options.OutputFormatters.RemoveType<StringOutputFormatter>();
+                options.OutputFormatters.RemoveType<StreamOutputFormatter>();
+            });
 
             services.AddSwaggerGen(c =>
             {
@@ -65,14 +67,14 @@ namespace WebApiStarter
                         Version = Configuration["Api:Version"]
                     });
 
-                c.AddSecurityDefinition("BearerAuth", new OpenApiSecurityScheme
+                c.AddSecurityDefinition(AuthenticationConstants.SchemeName, new OpenApiSecurityScheme
                 {
                     Type = SecuritySchemeType.Http,
-                    Scheme = JwtBearerDefaults.AuthenticationScheme.ToLowerInvariant(),
                     In = ParameterLocation.Header,
-                    Name = "Authorization",
-                    BearerFormat = "JWT",
-                    Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+                    Scheme = JwtBearerDefaults.AuthenticationScheme,
+                    Name = AuthenticationConstants.HeaderName,
+                    BearerFormat = AuthenticationConstants.BearerFormat,
+                    Description = AuthenticationConstants.Description,
                 });
 
                 c.OperationFilter<AuthResponsesOperationFilter>();
@@ -88,12 +90,9 @@ namespace WebApiStarter
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            if (env.IsDevelopment())
+            if (!env.IsDevelopment())
             {
-                app.UseDeveloperExceptionPage();
-            }
-            else
-            {
+                app.UseExceptionHandler("/internal/exception");
                 app.UseHsts();
             }
 
@@ -121,6 +120,7 @@ namespace WebApiStarter
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+                endpoints.MapFallbackToController("Default", "Internal");
             });
         }
     }

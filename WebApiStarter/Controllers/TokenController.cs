@@ -1,15 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Threading.Tasks;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using WebApiStarter.Attributes;
-using WebApiStarter.Models;
+using WebApiStarter.Dtos.Token;
 using WebApiStarter.Services;
 
 namespace WebApiStarter.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]/[action]")]
-    public class TokenController : ControllerBase
+    public class TokenController : ApiControllerBase
     {
         private readonly ITokenService _tokenService;
 
@@ -21,7 +18,8 @@ namespace WebApiStarter.Controllers
         /// <summary>
         /// Generate a token by providing username and password
         /// </summary>
-        [HttpPost]
+        [HttpPost("generate")]
+        [AllowAnonymous]
         [ProducesOK(typeof(TokenResponse)), ProducesNoContent, ProducesBadRequest]
         public async Task<IActionResult> Generate([FromBody]TokenRequest model)
         {

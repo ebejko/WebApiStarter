@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
-using System.Threading.Tasks;
 using WebApiStarter.Constants;
 
 namespace WebApiStarter.Data
@@ -23,19 +21,27 @@ namespace WebApiStarter.Data
 
             if (!context.Users.Any())
             {
-                var user = new IdentityUser("ebejko")
-                {
-                    Email = "ebejko@mail.com"
-                };
+                await userManager.CreateUser("admin", "admin@mail.com", "Pa$$w0rd", RoleConstants.Admin);
+                await userManager.CreateUser("user", "user@mail.com", "Pa$$w0rd");
+            }
+        }
 
-                var result = await userManager.CreateAsync(user, "Pa$$w0rd");
-				
-                if (result.Succeeded)
-                {
-                    user.EmailConfirmed = true;
-                    await userManager.UpdateAsync(user);
-                    await userManager.AddToRoleAsync(user, RoleConstants.Admin);
-                }
+        private static async Task CreateUser(this UserManager<IdentityUser> userManager, string userName, string email, string password, string? role = null)
+        {
+            var user = new IdentityUser(userName)
+            {
+                Email = email
+            };
+
+            var result = await userManager.CreateAsync(user, password);
+
+            if (result.Succeeded)
+            {
+                user.EmailConfirmed = true;
+                await userManager.UpdateAsync(user);
+
+                if (!String.IsNullOrWhiteSpace(role))
+                    await userManager.AddToRoleAsync(user, role);
             }
         }
     }

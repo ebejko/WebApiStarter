@@ -2,13 +2,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
-using System.Threading.Tasks;
-using WebApiStarter.Models;
+using WebApiStarter.Dtos.Token;
 
 namespace WebApiStarter.Services
 {
@@ -29,9 +25,9 @@ namespace WebApiStarter.Services
                 ?? throw new ArgumentNullException(nameof(jwtBearerOptions));
         }
 
-        public async Task<TokenResponse> GenerateToken(TokenRequest request)
+        public async Task<TokenResponse?> GenerateToken(TokenRequest request)
         {
-            var user = await _userManager.FindByNameAsync(request?.UserName);
+            var user = await _userManager.FindByNameAsync(request.UserName);
 
             if (user != null)
             {
@@ -52,21 +48,26 @@ namespace WebApiStarter.Services
                     claims.AddRange(userClaims);
                     claims.AddRange(userRoles.Select(role => new Claim(ClaimTypes.Role, role)));
 
-                    var expires = DateTime.UtcNow.AddDays(1);
-                    var token = new JwtSecurityToken(
+                    var expires = DateTime.UtcNow.AddHours(1);
+
+                    var tokenHandler = new JwtSecurityTokenHandler();
+
+                    var token = tokenHandler.CreateJwtSecurityToken(
                         issuer: _tokenValidationParameters.ValidIssuer,
                         audience: _tokenValidationParameters.ValidAudience,
-                        claims: claims,
+                        subject: new ClaimsIdentity(claims),
+                        notBefore: DateTime.UtcNow,
                         expires: expires,
+                        issuedAt: DateTime.UtcNow,
                         signingCredentials: new SigningCredentials(
                             _tokenValidationParameters.IssuerSigningKey,
-                            SecurityAlgorithms.HmacSha256));
+                            SecurityAlgorithms.HmacSha256),
+                        encryptingCredentials: new EncryptingCredentials(
+                            _tokenValidationParameters.TokenDecryptionKey,
+                            SecurityAlgorithms.Aes256KW,
+                            SecurityAlgorithms.Aes256CbcHmacSha512));
 
-                    return new TokenResponse
-                    {
-                        Token = new JwtSecurityTokenHandler().WriteToken(token),
-                        Expires = expires
-                    };
+                    return new TokenResponse(tokenHandler.WriteToken(token), expires);
                 }
             }
 

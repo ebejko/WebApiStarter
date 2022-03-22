@@ -1,10 +1,5 @@
 ﻿using Microsoft.AspNetCore;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Threading.Tasks;
 using WebApiStarter.Data;
 
 namespace WebApiStarter
@@ -36,8 +31,6 @@ namespace WebApiStarter
             host.Run();
         }
 
-        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
-                .UseStartup<Startup>();
+        public static IWebHostBuilder CreateWebHostBuilder(string[] args) => WebHost.CreateDefaultBuilder<Startup>(args);
     }
 }

@@ -11,7 +11,7 @@ namespace WebApiStarter.Data
         {
         }
 
-        public DbSet<TodoItem> TodoItems { get; set; }
+        public DbSet<TodoItem> TodoItems { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

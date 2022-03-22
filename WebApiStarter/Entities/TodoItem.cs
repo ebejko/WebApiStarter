@@ -7,8 +7,9 @@ namespace WebApiStarter.Models
         public long Id { get; set; }
 
         [Required]
-        public string Name { get; set; }
-        
+        public string Name { get; set; } = null!;
+
+        [Required]
         public bool IsComplete { get; set; }
     }
 }

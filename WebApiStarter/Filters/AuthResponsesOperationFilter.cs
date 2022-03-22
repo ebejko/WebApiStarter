@@ -1,9 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using WebApiStarter.Constants;
 
 namespace WebApiStarter.Filters
 {
@@ -11,8 +9,9 @@ namespace WebApiStarter.Filters
     {
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
-            var attributes = context.MethodInfo.DeclaringType.GetCustomAttributes(true)
-                                .Union(context.MethodInfo.GetCustomAttributes(true));
+            var attributes = context.MethodInfo.DeclaringType?.GetCustomAttributes(true)
+                                .Union(context.MethodInfo.GetCustomAttributes(true)) 
+                                ?? Enumerable.Empty<object>();
 
             if (attributes.OfType<IAllowAnonymous>().Any())
             {
@@ -39,7 +38,7 @@ namespace WebApiStarter.Filters
                             {
                                 Reference = new OpenApiReference 
                                 { 
-                                    Id = "BearerAuth", 
+                                    Id = AuthenticationConstants.SchemeName, 
                                     Type = ReferenceType.SecurityScheme 
                                 }
                             },

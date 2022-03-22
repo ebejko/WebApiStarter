@@ -1,19 +1,14 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using WebApiStarter.Attributes;
 using WebApiStarter.Constants;
 using WebApiStarter.Data;
+using WebApiStarter.Dtos.Todo;
 using WebApiStarter.Models;
 
 namespace WebApiStarter.Controllers
 {
-    [ApiController]
-    [Authorize]
-    [Route("api/[controller]")]
-    public class TodoController : ControllerBase
+    public class TodoController : ApiControllerBase
     {
         private readonly ApplicationDbContext _context;
 
@@ -26,17 +21,17 @@ namespace WebApiStarter.Controllers
         /// Get all Todo items
         /// </summary>
         [HttpGet]
-        [ProducesOK(typeof(List<TodoItem>))]
+        [ProducesOK(typeof(List<TodoResponse>))]
         public IActionResult GetAll()
         {
-            return Ok(_context.TodoItems.ToList());
+            return Ok(_context.TodoItems.Select(x => new TodoResponse(x.Id, x.Name!, x.IsComplete)).ToList());
         }
 
         /// <summary>
         /// Get Todo item by id
         /// </summary>
         [HttpGet("{id}")]
-        [ProducesOK(typeof(TodoItem)), ProducesNotFound]
+        [ProducesOK(typeof(TodoResponse)), ProducesNotFound]
         public IActionResult GetById([FromRoute] long id)
         {
             var item = _context.TodoItems.Find(id);
@@ -46,7 +41,7 @@ namespace WebApiStarter.Controllers
                 return NotFound();
             }
 
-            return Ok(item);
+            return Ok(new TodoResponse(item.Id, item.Name, item.IsComplete));
         }
 
         /// <summary>
@@ -54,12 +49,18 @@ namespace WebApiStarter.Controllers
         /// </summary>
         [HttpPost]
         [Authorize(Roles = RoleConstants.Admin)]
-        [ProducesCreated(typeof(TodoItem)), ProducesBadRequest]
-        public IActionResult Create([FromBody] TodoItem item)
+        [ProducesCreated(typeof(TodoResponse)), ProducesBadRequest]
+        public IActionResult Create([FromBody] TodoRequest model)
         {
-            _context.TodoItems.Add(item);
+            var todoItem = new TodoItem
+            {
+                Name = model.Name!,
+                IsComplete = model.IsComplete
+            };
+
+            _context.TodoItems.Add(todoItem);
             _context.SaveChanges();
-            return CreatedAtAction(nameof(GetById), new { id = item.Id }, item);
+            return CreatedAtAction(nameof(GetById), new { id = todoItem.Id }, new TodoResponse(todoItem.Id, todoItem.Name, todoItem.IsComplete));
         }
 
         /// <summary>
@@ -68,7 +69,7 @@ namespace WebApiStarter.Controllers
         [HttpPut("{id}")]
         [Authorize(Roles = RoleConstants.Admin)]
         [ProducesNoContent, ProducesBadRequest, ProducesNotFound]
-        public IActionResult Update([FromRoute] long id, [FromBody] TodoItem item)
+        public IActionResult Update([FromRoute] long id, [FromBody] TodoRequest model)
         {
             var todo = _context.TodoItems.Find(id);
 
@@ -77,8 +78,8 @@ namespace WebApiStarter.Controllers
                 return NotFound();
             }
 
-            todo.IsComplete = item.IsComplete;
-            todo.Name = item.Name;
+            todo.Name = model.Name!;
+            todo.IsComplete = model.IsComplete;
 
             _context.TodoItems.Update(todo);
             _context.SaveChanges();
