@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authentication.BearerToken;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
-using WebApiStarter.Constants;
 
 namespace WebApiStarter.Filters
 {
-    public class AuthResponsesOperationFilter : IOperationFilter
+	public class AuthResponsesOperationFilter : IOperationFilter
     {
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
@@ -38,7 +38,7 @@ namespace WebApiStarter.Filters
                             {
                                 Reference = new OpenApiReference 
                                 { 
-                                    Id = AuthenticationConstants.SchemeName, 
+                                    Id = BearerTokenDefaults.AuthenticationScheme, 
                                     Type = ReferenceType.SecurityScheme 
                                 }
                             },

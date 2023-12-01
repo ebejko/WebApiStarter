@@ -8,7 +8,7 @@ using WebApiStarter.Models;
 
 namespace WebApiStarter.Controllers
 {
-    public class TodoController : ApiControllerBase
+	public class TodoController : ApiControllerBase
     {
         private readonly ApplicationDbContext _context;
 
@@ -24,7 +24,7 @@ namespace WebApiStarter.Controllers
         [ProducesOK(typeof(List<TodoResponse>))]
         public IActionResult GetAll()
         {
-            return Ok(_context.TodoItems.Select(x => new TodoResponse(x.Id, x.Name!, x.IsComplete)).ToList());
+            return Ok(_context.TodoItems.Select(x => new TodoResponse(x.Id, x.Name, x.IsComplete)).ToList());
         }
 
         /// <summary>

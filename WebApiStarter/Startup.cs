@@ -1,19 +1,16 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
-using System.Text;
 using WebApiStarter.Constants;
 using WebApiStarter.Data;
 using WebApiStarter.Filters;
-using WebApiStarter.Services;
 
 namespace WebApiStarter
 {
-    public class Startup
+	public class Startup
     {
         public Startup(IConfiguration configuration)
         {
@@ -27,29 +24,20 @@ namespace WebApiStarter
         {
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(Configuration.GetConnectionString("SqlServerConnection")));
-            
-            services.AddIdentityCore<IdentityUser>()
-                .AddRoles<IdentityRole>()
-                .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddSignInManager();
 
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
+			services.AddIdentityCore<IdentityUser>()
+				.AddRoles<IdentityRole>()
+				.AddEntityFrameworkStores<ApplicationDbContext>();
+
+			services
+                .AddAuthentication(BearerTokenDefaults.AuthenticationScheme)
+                .AddBearerToken(options =>
                 {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidIssuer = Configuration["Token:Issuer"],
-                        ValidateAudience = true,
-                        ValidAudience = Configuration["Token:Issuer"],
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Token:SigningKey"])),
-                        TokenDecryptionKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Token:EncryptionKey"])),
-                        ClockSkew = TimeSpan.Zero
-                    };
-                });
+                    options.BearerTokenExpiration = Configuration.GetValue<TimeSpan?>("BearerToken:BearerTokenExpiration") ?? options.BearerTokenExpiration;
+                    options.RefreshTokenExpiration = Configuration.GetValue<TimeSpan?>("BearerToken:RefreshTokenExpiration") ?? options.RefreshTokenExpiration;
+				});
 
-            services.AddRouting(options => options.LowercaseUrls = true);
+			services.AddRouting(options => options.LowercaseUrls = true);
 
             services.AddControllers(options => 
             {
@@ -67,14 +55,13 @@ namespace WebApiStarter
                         Version = Configuration["Api:Version"]
                     });
 
-                c.AddSecurityDefinition(AuthenticationConstants.SchemeName, new OpenApiSecurityScheme
+                c.AddSecurityDefinition(BearerTokenDefaults.AuthenticationScheme, new OpenApiSecurityScheme
                 {
                     Type = SecuritySchemeType.Http,
                     In = ParameterLocation.Header,
-                    Scheme = JwtBearerDefaults.AuthenticationScheme,
+                    Scheme = AuthenticationConstants.SchemeName,
                     Name = AuthenticationConstants.HeaderName,
-                    BearerFormat = AuthenticationConstants.BearerFormat,
-                    Description = AuthenticationConstants.Description,
+                    Description = AuthenticationConstants.Description
                 });
 
                 c.OperationFilter<AuthResponsesOperationFilter>();
@@ -83,14 +70,12 @@ namespace WebApiStarter
                 var xmlPath = Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml");
                 c.IncludeXmlComments(xmlPath);
             });
-
-            services.AddScoped<ITokenService, TokenService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            if (!env.IsDevelopment())
+			if (!env.IsDevelopment())
             {
                 app.UseExceptionHandler("/internal/exception");
                 app.UseHsts();

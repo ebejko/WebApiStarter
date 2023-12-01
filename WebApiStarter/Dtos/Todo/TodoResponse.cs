@@ -1,18 +1,11 @@
 ﻿namespace WebApiStarter.Dtos.Todo
 {
-    public class TodoResponse
-    {
-        public long Id { get; }
+    public class TodoResponse(long id, string? name, bool isComplete)
+	{
+		public long Id { get; } = id;
 
-        public string Name { get; }
+		public string? Name { get; } = name;
 
-        public bool IsComplete { get; }
-
-        public TodoResponse(long id, string name, bool isComplete)
-        {
-            Id = id;
-            Name = name;
-            IsComplete = isComplete;
-        }
-    }
+		public bool IsComplete { get; } = isComplete;
+	}
 }

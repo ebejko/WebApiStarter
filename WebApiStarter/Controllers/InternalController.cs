@@ -13,7 +13,6 @@ namespace WebApiStarter.Controllers
             return NotFound();
         }
 
-        [Route("exception")]
         [HttpGet, HttpPost, HttpPut, HttpPatch, HttpDelete]
         public IActionResult Exception() 
         {

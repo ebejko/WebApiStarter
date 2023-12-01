@@ -3,8 +3,7 @@
     public class AuthenticationConstants
     {
         public const string HeaderName = "Authorization";
-        public const string SchemeName = "BearerAuth";
-        public const string BearerFormat = "JWT";
-        public const string Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"";
+        public const string SchemeName = "Bearer";
+        public const string Description = "Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"";
     }
 }
